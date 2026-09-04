@@ -1,0 +1,108 @@
+name: victoria-metrics
+title: VictoriaMetrics
+icon: victoriametrics
+type: service
+scalable: false
+
+labels:
+- victoria-metrics
+- metrics
+- monitoring
+
+options:
+- version: '1.150'
+  tag: 'v1.150.0'
+  default: true
+
+endpoints:
+- name: victoria-metrics
+  ports:
+  - name: http
+    number: 8428
+    protocol: http
+    main: true
+    private: true
+
+volumes:
+- name: data
+  title: VictoriaMetrics data
+  size: 20
+  helm:
+    labels: persistence.labels
+    values:
+    - name: persistence.enabled
+      value: true
+    - name: persistence.existingClaim
+      value: '{{volumes.data.claim}}'
+    - name: persistence.size
+      value: '{{volumes.data.size}}Gi'
+
+helm:
+  name: wodby
+  source: oci://registry-1.docker.io/wodby/stateful
+  chart: oci://registry-1.docker.io/wodby/stateful
+  version: 0.2.0
+  valueMappings:
+    replicas: replicaCount
+    nameOverride: nameOverride
+    fullnameOverride: fullnameOverride
+    serviceAccountName: serviceAccount.name
+    serviceAccountCreate: serviceAccount.create
+    strategy: updateStrategy.type
+    minReady: minReadySeconds
+    shutdownGracePeriod: terminationGracePeriodSeconds
+  values:
+  - name: containerName
+    value: victoria-metrics
+  - name: args
+    value:
+    - -storageDataPath=/victoria-metrics-data
+    - -httpListenAddr=:8428
+  - name: containerPorts
+    value:
+    - name: http
+      containerPort: 8428
+      protocol: TCP
+  - name: headlessService.enabled
+    value: false
+  - name: persistence.mountPath
+    value: /victoria-metrics-data
+  - name: startupProbe
+    value:
+      httpGet:
+        path: /-/ready
+        port: http
+      failureThreshold: 30
+      periodSeconds: 5
+  - name: readinessProbe
+    value:
+      httpGet:
+        path: /-/ready
+        port: http
+      periodSeconds: 10
+  - name: livenessProbe
+    value:
+      httpGet:
+        path: /-/healthy
+        port: http
+      initialDelaySeconds: 30
+      periodSeconds: 20
+
+workloads:
+- name: main
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: '{{helm.release}}'
+  kind: statefulset
+  primary: true
+  helm:
+    labels: podLabels
+    annotations: podAnnotations
+    volumes: extraVolumes
+  containers:
+  - name: victoria-metrics
+    image: victoriametrics/victoria-metrics
+    helm:
+      resources: resources
+      env: envVars
+      mounts: extraVolumeMounts
