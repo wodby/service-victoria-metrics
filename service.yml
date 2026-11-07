@@ -111,6 +111,10 @@ workloads:
   containers:
   - name: victoria-metrics
     image: victoriametrics/victoria-metrics
+    resources:
+      request:
+        cpu: 20
+        memory: 32
     helm:
       resources: resources
       env: envVars
