@@ -38,6 +38,14 @@ volumes:
     - name: persistence.size
       value: '{{volumes.data.size}}Gi'
 
+# VictoriaMetrics accepts metrics over OTLP/HTTP without authentication. Collectors in the same environment
+# link to it with these values.
+exports:
+- name: otlp_http_endpoint
+  value: '{{url.http}}/opentelemetry'
+- name: otlp_http_authorization
+  value: ''
+
 helm:
   name: wodby
   source: oci://registry-1.docker.io/wodby/stateful
