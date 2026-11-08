@@ -115,6 +115,9 @@ workloads:
       request:
         cpu: 20
         memory: 32
+      # VictoriaMetrics sizes its caches from this limit; without one it would use the node's memory.
+      limit:
+        memory: 2048
     helm:
       resources: resources
       env: envVars
